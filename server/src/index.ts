@@ -16,6 +16,7 @@ io.on("connection",(socket)=>{
     console.log("socket connection is on");
     socket.on("disconnect",()=>{
         console.log("socket connection is off");
+        console.log("connection lost");
     })
 })
 
