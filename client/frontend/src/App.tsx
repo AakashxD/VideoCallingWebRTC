@@ -1,13 +1,14 @@
 import CreateRoom from "./Components/CreateRoom"
-
+import { Route,Routes } from "react-router-dom"
+import Home from "./pages/Home"
+import Room from "./pages/Room"
 function App() {
   return (
    <>
-   <h3 className="text-red-500">HELLO REACT PROJECT</h3>
-   <div>
-       Video calling app
-       <CreateRoom/>
-   </div>
+    <Routes>
+      <Route path="/" element={<Home/>}/>
+      <Route path="/room/:id" element={<Room/>}/>
+    </Routes>
    </>
   )
 }
