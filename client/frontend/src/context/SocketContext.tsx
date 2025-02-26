@@ -26,7 +26,11 @@ export const SocketProvider:React.FC<Props>=({children})=>{
     }
      useEffect(()=>{
         const userID=UUIDv5();
-        const newPeer=new Peer(userID);
+        const newPeer=new Peer(userID,{
+            host:"localhost",
+            port:5000,
+            path:"/myapp"
+        });
         setUser(newPeer);
         fetchUserFeed();
         function enterRoom({roomID}:{roomID:string}){
