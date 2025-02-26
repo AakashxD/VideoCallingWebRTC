@@ -5,7 +5,8 @@ import IRoomParams from "../interfaces/IRoomParams";
       // [roomId]:[u1,u2,u3]
 const rooms:Record<string,string[]>={};
 const roomHandler=(socket:Socket)=>{
-        function createRoom(){
+
+    function createRoom(){
         const roomID=UUIDv5();
         // this will make the socket instance join the room
         socket.join(roomID);

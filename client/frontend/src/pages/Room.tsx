@@ -1,10 +1,11 @@
 import { useParams } from 'react-router-dom'
 import { useEffect ,useContext} from 'react';
 import { SocketContext } from '../context/SocketContext';
+import UserFeedPlayer from '../Components/UserFeedPlayer';
 
 const Room = () => {
     const {id} =useParams();
-    const {socket,user}=useContext(SocketContext);
+    const {socket,user,stream}=useContext(SocketContext);
     const fetchParticipants=({roomID,participants}:{roomID:string,participants:string[]})=>{            console.log("fetch participantss");
                console.log("room Id",roomID," participants",participants)
     } 
@@ -17,7 +18,11 @@ const Room = () => {
         }
     },[id,socket,user]);
   return (
-    <div>Room {id}</div>
+    <>
+    <div className=''>Room {id}
+    <UserFeedPlayer stream={stream}/>
+    </div>
+    </>
   )
 }
 export default Room;
