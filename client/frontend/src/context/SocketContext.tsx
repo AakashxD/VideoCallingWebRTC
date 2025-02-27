@@ -14,7 +14,7 @@ const socket=SocketIOClient(webServer); // create an socket instance
 interface Props {
     children:React.ReactNode
 }
-
+// console.log("inside socket")
 export const SocketProvider:React.FC<Props>=({children})=>{
     const [user ,setUser]=useState<peer>();
     const [stream,setStream]=useState<MediaStream>();
