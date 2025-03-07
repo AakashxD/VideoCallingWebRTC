@@ -1,7 +1,6 @@
 import { Socket } from "socket.io";
 import { v4 as UUIDv5 } from 'uuid';
 import IRoomParams from "../interfaces/IRoomParams";
-
       // [roomId]:[u1,u2,u3]
 const rooms:Record<string,string[]>={};
 const roomHandler=(socket:Socket)=>{
@@ -26,6 +25,13 @@ const roomHandler=(socket:Socket)=>{
            roomID,
            participants:rooms[roomID]
         })
+        socket.on("ready",()=>{
+            // for the fronted once someone joins the room we will emit the ready event
+            // in below line we are emiting a msg to everyone in the roomID that a new user joineed with peerID
+            
+            socket.to(roomID).emit("user-joined",{peerID});
+        })
+        
     }
    socket.on("create-room",createRoom);
    socket.on("joined-room",joinRoom);
