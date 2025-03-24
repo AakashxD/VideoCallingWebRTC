@@ -1,80 +1,117 @@
-import SocketIOClient from "socket.io-client"
-import { createContext, useEffect,useReducer,useState } from "react"
+import SocketIOClient from "socket.io-client";
+import { createContext, useEffect, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {v4 as UUIDv5} from "uuid";
-import peer, { Peer } from "peerjs"
-import { peerReducer} from '../Reducers/peerReducer';
+import { v4 as UUIDv4 } from "uuid";
+import Peer from "peerjs";
+import { peerReducer } from "../Reducers/peerReducer";
 import { addPeerAction } from "../Actions/peerAction";
-const webServer="http://localhost:5000"
+
+const webServer = "http://localhost:5000";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const SocketContext=createContext<any | null> (null);
+export const SocketContext = createContext<any | null>(null);
 
-const socket=SocketIOClient(webServer); // create an socket instance 
+const socket = SocketIOClient(webServer); // Create a socket instance
 
 interface Props {
-    children:React.ReactNode
+    children: React.ReactNode;
 }
 
-export const SocketProvider:React.FC<Props>=({children})=>{
-    const [user ,setUser]=useState<peer>();
-    const [stream,setStream]=useState<MediaStream>();
-    const [peers,dispatch]=useReducer(peerReducer,{}); // peer->state
-    const navigate=useNavigate();
+export const SocketProvider: React.FC<Props> = ({ children }) => {
+    const [user, setUser] = useState<Peer | null>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+    const [peers, dispatch] = useReducer(peerReducer, {}); // peer->state
+    const navigate = useNavigate();
 
-    const fetchUserFeed= async()=>{
-      const streamVideo=  await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-       setStream(streamVideo);
+    const fetchUserFeed = async () => {
+        try {
+            const streamVideo = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            setStream(streamVideo);
+        } catch (error) {
+            console.error("Error accessing camera/microphone:", error);
+        }
+    };
 
-    }
-     useEffect(()=>{
-        const userID=UUIDv5();
-        // creating a peer instance 
-        const newPeer=new Peer(userID,{
-            host:"localhost",
-            port:5000,
-            path:"/myapp"
+    useEffect(() => {
+        const userID = UUIDv4();
+        console.log("Generated userID:", userID);
+
+        // Creating a peer instance
+        const newPeer = new Peer(userID, {
+            host: "192.168.x.x",  // Replace with your local IP
+            port: 9000,
+            path: "/myapp",
+            secure: false, // Important! Ensure it's `false` if using HTTP
+            config: {
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" },
+                ],
+            },
         });
 
+        console.log("New peer created:", newPeer);
         setUser(newPeer);
 
         fetchUserFeed();
 
-        const enterRoom=({roomID}:{roomID:string})=>{
-                  navigate(`/room/${roomID}`);
-        }
-        // we will transfer to room page when we collect joined room event from the server 
-          socket.on("room-created",enterRoom);
-     },[]);
-     useEffect(()=>{
-              if(!user || !peers || !stream) return ;
-           
-              socket.on("user-joined",
-            ({peerID})=> {
-                if (stream) {
-                    // all user will call to peerID with there stream
-                    // made an call
-                    const call = user.call(peerID, stream);
-                    console.log("calling peer ID",peerID);
-                    call.on("stream",()=>{
-                         dispatch(addPeerAction(peerID,stream,))
-                    })
+        // Redirect to room when created
+        const enterRoom = ({ roomID }: { roomID: string }) => {
+            navigate(`/room/${roomID}`);
+        };
 
-                }
-              })
-              user.on("call",(call)=>{
-                // what to do when other peers start calling you when u joined
-                console.log("response to call")
-                call.answer(stream);
-                call.on("stream",()=>{
-                        
-                })
-              })
-              socket.emit("ready")
-     },[user,peers]);
+        socket.on("room-created", enterRoom);
+
+        return () => {
+            socket.off("room-created", enterRoom);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!user || !stream) return;
+
+        socket.on("user-joined", ({ peerID }) => {
+            console.log("New user joined:", peerID);
+            
+            const call = user.call(peerID, stream);
+            console.log("Calling peer:", peerID);
+
+            call.on("stream", (peerStream) => {
+                console.log(`Receiving stream from ${peerID}`);
+                dispatch(addPeerAction(peerID, peerStream));
+            });
+
+            call.on("close", () => {
+                console.log("Call closed with peer:", peerID);
+                dispatch(addPeerAction(peerID, null)); // Remove peer from state
+            });
+        });
+
+        user.on("call", (call) => {
+            console.log("Receiving call from:", call.peer);
+            call.answer(stream);
+
+            call.on("stream", (peerStream) => {
+                console.log("Stream received from", call.peer);
+                dispatch(addPeerAction(call.peer, peerStream));
+            });
+
+            call.on("close", () => {
+                console.log("Call closed from:", call.peer);
+                dispatch(addPeerAction(call.peer, stream));
+            });
+        });
+
+        socket.emit("ready");
+
+        return () => {
+            socket.off("user-joined");
+        };
+    }, [user, stream]);
+
     return (
-        <SocketContext.Provider value={{socket,user,stream}}>
+        <SocketContext.Provider value={{ socket, user, stream, peers }}>
             {children}
         </SocketContext.Provider>
-    )
-}
+    );
+};
